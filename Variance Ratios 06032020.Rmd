@@ -1,0 +1,135 @@
+---
+title: "NSE"
+author: "Aanchal Dusija and Arushi Chadha"
+date: "10/02/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+
+getwd()
+setwd("C:/Users/LENOVO/Downloads/Variance Ratio")
+```
+
+# Variance Ratio Tests for Random Walk Hypothesis Using NIFTY50.
+
+By Aanchal Dusija and Arushi Chadha
+
+## Packages and libraries
+``` {r}
+# install.packages("ReporteRs")
+# install.packages("officer")
+# install.packages("rvg") 
+# install.packages("readxl")
+# install.packages("xts")
+# install.packages("PerformanceAnalytics")
+# install.packages("vrtest")
+# install.packages("export")
+# install.packages("rmarkdown")
+
+library(readxl)
+library(xts)
+library(PerformanceAnalytics)
+library(vrtest)
+library(rmarkdown)
+library(ggplot2)
+```
+
+
+## Inputting the data
+``` {r}
+PR_MarketCap<-read.csv("PR_MarketCap.csv", header = TRUE, sep = ",")
+PR_ADT<-read.csv("PR_ADT.csv", header = TRUE, sep = ",")
+```
+
+# Looking at the data briefly
+```{r}
+# PR_MarketCap <- as.ts(PR_MarketCap)
+# PR_ADT <- as.ts(PR_ADT)
+
+PR_MarketCap$Date = as.Date(PR_MarketCap$Date, format = '%d-%m-%y')
+PR_ADT$Date = as.Date(PR_ADT$Date, format = '%d-%m-%y')
+head(PR_MarketCap)
+head(PR_ADT)
+```
+
+# Removing NA values, if any
+```{r}
+PR_MarketCap <- na.omit(PR_MarketCap)
+PR_ADT<- na.omit(PR_ADT)
+```
+
+# Removing NA values, if any
+```{r}
+deciles<-colnames(PR_ADT)
+deciles <- deciles[2:11]
+deciles
+```
+
+## Summary 
+```{r}
+View(data.frame(summary(PR_MarketCap)))
+View(data.frame(summary(PR_ADT)))
+
+```
+## VARIANCE RATIO FUNCTION 
+```{r}
+stat.plot <-
+  function (y, k)
+  {
+    y <- as.matrix(y)
+    n <- nrow(y)
+    m <- mean(y)
+    vr1 <- sum((y - m)^2)/n
+    # use the filter function
+    flt = filter(y, rep(1,k), method = "convolution")
+    flt = flt[!is.na(flt)]
+    summ = sum((flt - k * m)^2)
+    vr2 <- summ/(n * k)
+    vr <- vr2/vr1
+    tem1 <- 2 * (2 * k - 1) * (k - 1)
+    tem2 <- 3 * k * n
+    se <- sqrt(tem1/tem2)
+    return(list(vr = vr, se = se))
+  }
+
+
+VR.plot_new<- function (y, kvec) 
+ {
+   val <- matrix(NA, nrow = max(kvec), ncol = 3)
+   for (i in 2:max(kvec)) {
+     tem1 <- stat.plot(y, i)$vr
+     tem2 <- stat.plot(y, i)$se
+     val[i, ] <- c(tem1, 1 - 1.96 * tem2, 1 + 1.96 * tem2)
+   }
+   matplot(val, type = "l", col = c(2, 4, 4), xlab = "holding period", 
+           ylab = "variance ratio", lwd = c(3, 3, 3), lty = c(1, 
+                                                              2, 2))
+   abline(h = 1)
+   title(main = "Variance Ratios and 95% confidence band")
+   VAL <- as.matrix(val[2:max(kvec), 1])
+   rownames(VAL) <- paste("k=", 2:max(kvec), sep = "")
+   colnames(VAL) <- "VR"
+   return(list(VR = VAL))
+ }
+ 
+```
+
+## VARIANCE RATIO for Market Capital Deciles  ##
+``` {r pressure1, echo = FALSE}
+# Holding Period from 5 days(weekly) till 60 days(quarterly)
+
+
+a<-c(5:65)
+lapply(PR_MarketCap[2:11], function(x) VR.plot_new(x,a))
+```
+
+## VARIANCE RATIO for Average Daily Turnover Deciles  ##
+``` {r pressure2, echo = FALSE}
+# Holding Period from 5 days(weekly) till 60 days(quarterly)
+
+
+a<-c(5:65)
+lapply(PR_ADT[2:11], function(x) VR.plot_new(x,a))
+```
